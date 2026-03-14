@@ -8,6 +8,12 @@
 #define R_STEP_PIN 14
 #define R_DIR_PIN  12
 
+#define SDA 21
+#define SDL 22
+#define XSHUT_LEFT  4
+#define XSHUT_FRONT 13
+#define XSHUT_RIGHT 27 
+
 LineFollower sensors(34, 35, 32, 33, 23, 19);
 AccelStepper leftMotor(1, L_STEP_PIN, L_DIR_PIN);
 AccelStepper rightMotor(1, R_STEP_PIN, R_DIR_PIN);
@@ -21,6 +27,15 @@ MotorSpeeds sharedSpeeds = {0.0, 0.0};
 
 TaskHandle_t MotorTaskHandle;
 TaskHandle_t LogicTaskHandle;
+
+// States
+enum STATE{
+  TASK_1,
+  TASK_2,
+  SIM,
+  TASK_3,
+  TASK_4
+};
 
 void Motor(void * pvParameters){
     MotorSpeeds* speeds = (MotorSpeeds*) pvParameters;
