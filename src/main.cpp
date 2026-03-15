@@ -1,8 +1,11 @@
 #include <Arduino.h>
 #include <AccelStepper.h>
 #include <LineFollower.h>
+#include <GridNavigator.h>
+#include <StepperDrive.h>
 #include <Wire.h>
 #include <wallsensor.h>
+#include <iostream>
 
 // Stepper Motor Pins
 #define L_STEP_PIN 25
@@ -20,6 +23,8 @@ LineFollower sensors(34, 35, 32, 33, 23, 19);
 AccelStepper leftMotor(1, L_STEP_PIN, L_DIR_PIN);
 AccelStepper rightMotor(1, R_STEP_PIN, R_DIR_PIN);
 WallSensors wall(XSHUT_LEFT, XSHUT_RIGHT, XSHUT_FRONT);
+StepperDrive drive(L_STEP_PIN, L_DIR_PIN, R_STEP_PIN, R_DIR_PIN);
+GridNavigator navigator(&drive, &sensors, 0, 0, 0);
 
 struct MotorSpeeds {
     volatile float left;
@@ -58,11 +63,12 @@ void Movement(void * pvParameters){
     MotorSpeeds* speeds = (MotorSpeeds*) pvParameters;
     for(;;){
         switch(currentState) {
-            case TASK_1:
-                uint8_t readings = wall.getReading();
-                
+            case TASK_1: {
+                DFS(wall, navigator);
+                currentState = TASK_2; 
                 break;
-            case TASK_2:
+            }
+            case TASK_2:{
                 float pidCorrection = sensors.calculatePID();
                 float baseSpeed = 800.0; 
                 float pidMultiplier = 150.0; // How aggressively it turns
@@ -74,15 +80,19 @@ void Movement(void * pvParameters){
                 speeds->left = leftSpeed;
                 speeds->right = rightSpeed;
                 break;
-            case SIM:
+            }
+            case SIM:{
                 // Implementation for SIM
                 break;
-            case TASK_3:
+            }
+            case TASK_3:{
                 // Implementation for TASK_3
                 break;
-            case TASK_4:
+            }
+            case TASK_4:{
                 // Implementation for TASK_4
                 break;
+            }
         }
         
 

@@ -3,6 +3,7 @@
 
 #include "StepperDrive.h"
 #include "LineFollower.h"
+#include <wallsensor.h>
 
 // Define Heading Constants
 #define NORTH 0
@@ -37,5 +38,8 @@ class GridNavigator {
     void turnLeft();
     void turnAround();
 };
+
+void DFS(WallSensors &sensors, GridNavigator &nav);
+
 
 #endif
