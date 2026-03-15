@@ -2,7 +2,7 @@
 #include <AccelStepper.h>
 #include <LineFollower.h>
 #include <Wire.h>
-#include "wallsensor.h"
+#include <wallsensor.h>
 
 // Stepper Motor Pins
 #define L_STEP_PIN 25
@@ -40,6 +40,8 @@ enum STATE{
   TASK_4
 };
 
+volatile STATE currentState = TASK_1;
+
 void Motor(void * pvParameters){
     MotorSpeeds* speeds = (MotorSpeeds*) pvParameters;
     for(;;){
@@ -55,16 +57,34 @@ void Motor(void * pvParameters){
 void Movement(void * pvParameters){
     MotorSpeeds* speeds = (MotorSpeeds*) pvParameters;
     for(;;){
-        float pidCorrection = sensors.calculatePID();
-        float baseSpeed = 800.0; 
-        float pidMultiplier = 150.0; // How aggressively it turns
-        float leftSpeed  = baseSpeed + (pidCorrection * pidMultiplier); 
-        float rightSpeed = baseSpeed - (pidCorrection * pidMultiplier);
-        leftSpeed = constrain(leftSpeed, -200, 2500);
-        rightSpeed = constrain(rightSpeed, -200, 2500);
+        switch(currentState) {
+            case TASK_1:
+                uint8_t readings = wall.getReading();
+                
+                break;
+            case TASK_2:
+                float pidCorrection = sensors.calculatePID();
+                float baseSpeed = 800.0; 
+                float pidMultiplier = 150.0; // How aggressively it turns
+                float leftSpeed  = baseSpeed + (pidCorrection * pidMultiplier); 
+                float rightSpeed = baseSpeed - (pidCorrection * pidMultiplier);
+                leftSpeed = constrain(leftSpeed, -200, 2500);
+                rightSpeed = constrain(rightSpeed, -200, 2500);
 
-        speeds->left = leftSpeed;
-        speeds->right = rightSpeed;
+                speeds->left = leftSpeed;
+                speeds->right = rightSpeed;
+                break;
+            case SIM:
+                // Implementation for SIM
+                break;
+            case TASK_3:
+                // Implementation for TASK_3
+                break;
+            case TASK_4:
+                // Implementation for TASK_4
+                break;
+        }
+        
 
         vTaskDelay(pdMS_TO_TICKS(10));
     }
