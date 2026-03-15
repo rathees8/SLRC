@@ -1,5 +1,5 @@
-#ifndef SENSOR_H
-#define SENSOR_H
+#ifndef WALLSENSOR_H
+#define WALLSENSOR_H
 
 #include <Arduino.h>
 #include <Wire.h>
@@ -7,37 +7,39 @@
 
 class WallSensors{
 private:
-    int XSHUT_LEFT;
-    int XSHUT_RIGHT;
-    int XSHUT_FRONT;
+    int shut_left;
+    int shut_right;
+    int shut_front;
     uint16_t thresh = 100;
     VL53L0X sensorLeft;
     VL53L0X sensorFront;
     VL53L0X sensorRight;
 
 public:
-    WallSensors(int xl,int xr,int xf): XSHUT_FRONT(xf), XSHUT_LEFT(xl), XSHUT_RIGHT(xr){
-        pinMode(XSHUT_LEFT, OUTPUT);
-        pinMode(XSHUT_FRONT, OUTPUT);
-        pinMode(XSHUT_RIGHT, OUTPUT);
-        digitalWrite(XSHUT_LEFT, LOW);
-        digitalWrite(XSHUT_FRONT, LOW);
-        digitalWrite(XSHUT_RIGHT, LOW);
+    WallSensors(int xl,int xr,int xf): shut_left(xl), shut_right(xr), shut_front(xf){}
+
+    void init(){
+        pinMode(shut_left, OUTPUT);
+        pinMode(shut_front, OUTPUT);
+        pinMode(shut_right, OUTPUT);
+        digitalWrite(shut_left, LOW);
+        digitalWrite(shut_front, LOW);
+        digitalWrite(shut_right, LOW);
         delay(10);
 
-        digitalWrite(XSHUT_LEFT, HIGH);
+        digitalWrite(shut_left, HIGH);
         delay(10);
         sensorLeft.init();
         sensorLeft.setTimeout(500);
         sensorLeft.setAddress(0x30);
 
-        digitalWrite(XSHUT_FRONT, HIGH);
+        digitalWrite(shut_front, HIGH);
         delay(10);
         sensorFront.init();
         sensorFront.setTimeout(500);
         sensorFront.setAddress(0x31);
 
-        digitalWrite(XSHUT_RIGHT, HIGH);
+        digitalWrite(shut_right, HIGH);
         delay(10);
         sensorRight.init();
         sensorRight.setTimeout(500);

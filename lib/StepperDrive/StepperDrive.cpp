@@ -74,3 +74,7 @@ void StepperDrive::turnLeft(long steps) {
 void StepperDrive::stop() {
 
 }
+
+void StepperDrive::turnAngle(double angle){
+  
+}

@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <AccelStepper.h>
-#include "LineFollower.h"
+#include <LineFollower.h>
+#include <Wire.h>
+#include "wallsensor.h"
 
 // Stepper Motor Pins
 #define L_STEP_PIN 25
@@ -9,7 +11,7 @@
 #define R_DIR_PIN  12
 
 #define SDA 21
-#define SDL 22
+#define SCL 22
 #define XSHUT_LEFT  4
 #define XSHUT_FRONT 13
 #define XSHUT_RIGHT 27 
@@ -17,6 +19,7 @@
 LineFollower sensors(34, 35, 32, 33, 23, 19);
 AccelStepper leftMotor(1, L_STEP_PIN, L_DIR_PIN);
 AccelStepper rightMotor(1, R_STEP_PIN, R_DIR_PIN);
+WallSensors wall(XSHUT_LEFT, XSHUT_RIGHT, XSHUT_FRONT);
 
 struct MotorSpeeds {
     volatile float left;
@@ -71,6 +74,8 @@ void Movement(void * pvParameters){
 void setup(){
     Serial.begin(115200);
     sensors.init();
+    Wire.begin(SDA, SCL);
+    wall.init();
     sensors.setPID(1.5, 0.0, 0.5);
 
     leftMotor.setMaxSpeed(4000);

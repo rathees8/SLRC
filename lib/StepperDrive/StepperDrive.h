@@ -29,6 +29,7 @@ class StepperDrive {
     void turnRight(long steps);
     void turnLeft(long steps);
     void stop();
+    void turnAngle(double angle);
 };
 
 #endif
