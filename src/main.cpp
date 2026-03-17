@@ -5,7 +5,7 @@
 #include <StepperDrive.h>
 #include <Wire.h>
 #include <wallsensor.h>
-#include <iostream>
+#include <rpicom.h>
 
 // Stepper Motor Pins
 #define L_STEP_PIN 25
@@ -13,6 +13,7 @@
 #define R_STEP_PIN 14
 #define R_DIR_PIN  12
 
+// TOF Sensor Pins
 #define SDA 21
 #define SCL 22
 #define XSHUT_LEFT  4
