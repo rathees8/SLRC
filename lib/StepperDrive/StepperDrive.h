@@ -35,6 +35,7 @@ class StepperDrive {
     void stop();
     void turnAngle(double angle);
     void step(int stepsL, int stepsR);
+    void MoveCTS(double speedL, double speedR);
 };
 
 #endif

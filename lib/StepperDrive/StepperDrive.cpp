@@ -15,6 +15,8 @@ StepperDrive::StepperDrive(int spL, int dpL, int spR, int dpR) {
 void StepperDrive::init() {
   leftMotor = new AccelStepper(1, stepPinL, dirPinL);
   rightMotor = new AccelStepper(1, stepPinR, dirPinR);
+  leftMotor->setMaxSpeed(4000);
+  rightMotor->setMaxSpeed(4000);
 }
 
 void StepperDrive::setSpeed(int delayUs) {
@@ -24,6 +26,8 @@ void StepperDrive::setSpeed(int delayUs) {
 void StepperDrive::step(int stepsL, int stepsR) {
     leftMotor->move(stepsL);
     rightMotor->move(stepsR);
+    leftMotor->run();
+    rightMotor->run();
 }
 
 void StepperDrive::moveForward(long steps) {
@@ -36,6 +40,13 @@ void StepperDrive::turnRight(long steps) {
 
 void StepperDrive::turnLeft(long steps) {
     turnAngle(-90);
+}
+
+void StepperDrive::MoveCTS(double speedL, double speedR) {
+    leftMotor->setSpeed(speedL);
+    rightMotor->setSpeed(speedR);
+    leftMotor->runSpeed();
+    rightMotor->runSpeed();
 }
 
 void StepperDrive::stop() {

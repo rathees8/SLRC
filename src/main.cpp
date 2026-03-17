@@ -29,13 +29,15 @@ StepperDrive drive(L_STEP_PIN, L_DIR_PIN, R_STEP_PIN, R_DIR_PIN);
 GridNavigator navigator(&drive, &sensors, 0, 0, 0);
 PiLink camera;
 
-struct MotorSpeeds {
-    volatile float left;
-    volatile float right;
+struct MotorData {
+    float speedLeft;
+    float speedRight;
+    long stepLeft;
+    long stepRight;
 };
 
-// Variables
-MotorSpeeds sharedSpeeds = {0.0, 0.0};
+// Global variables
+MotorData sharedMotorData = {0.0, 0.0, 0, 0};
 int pixel_gap = 20; // for perfect rotation, adjust it until 90 turn becomes straight to cube.
 int deadzone = 10; // pixels within the center that are considered "close enough"
 
@@ -51,22 +53,48 @@ enum STATE{
   TASK_4
 };
 
+enum SearchState{
+    LINE_FOLLOW,
+    BOX_FOLLOW,
+    RETURN
+};
+
 volatile STATE currentState = TASK_1;
+volatile SearchState searchState = LINE_FOLLOW;
+volatile bool boxAligned = false;
 
 void Motor(void * pvParameters){
-    MotorSpeeds* speeds = (MotorSpeeds*) pvParameters;
+    MotorData* data = (MotorData*) pvParameters;
     for(;;){
-        leftMotor.setSpeed(speeds->left);
-        rightMotor.setSpeed(speeds->right);
+        switch(currentState){
+            case TASK_1:
+                drive.MoveCTS(data->speedLeft, data->speedRight);
+                break;
+            case TASK_2:
+                switch (searchState){
+                    case LINE_FOLLOW:
+                        drive.MoveCTS(data->speedLeft, data->speedRight);
+                        break;
+                    case BOX_FOLLOW:
+                        if (!boxAligned){
+                            drive.step(data->stepLeft, data->stepRight);
+                        }else{
+                            drive.stop();
+                        }
+                        break;
+                }
+        }
+        // leftMotor.setSpeed(data->left);
+        // rightMotor.setSpeed(data->right);
         
-        leftMotor.runSpeed();
-        rightMotor.runSpeed();
+        // leftMotor.runSpeed();
+        // rightMotor.runSpeed();
         yield();
     }
 }
 
 void Movement(void * pvParameters){
-    MotorSpeeds* speeds = (MotorSpeeds*) pvParameters;
+    MotorData* data = (MotorData*) pvParameters;
     for(;;){
         switch(currentState) {
             case TASK_1: {
@@ -79,9 +107,11 @@ void Movement(void * pvParameters){
                     int targetX = 320;
                     int currentX = camera.getX();
                     if (currentX > targetX + pixel_gap - deadzone ){
-                        speeds->left = 150;
-                        speeds->right = 150;
+                        data->stepLeft = 10;
+                        data->stepRight = 10;
                     }
+                    // so we align the camera then execute the move and pickup logic, until then it doesn't go to else state. 
+                    // then we go to return then only it goes to else. this is annoying. next is on wednesday need to test it tommorow.
                 }else{
                     float pidCorrection = sensors.calculatePID();
                     float baseSpeed = 800.0; 
@@ -91,10 +121,10 @@ void Movement(void * pvParameters){
                     leftSpeed = constrain(leftSpeed, -200, 2500);
                     rightSpeed = constrain(rightSpeed, -200, 2500);
 
-                    speeds->left = leftSpeed;
-                    speeds->right = rightSpeed;
-                break;
+                    data->speedLeft = leftSpeed;
+                    data->speedRight = rightSpeed;
                 }
+                break;
             }
             case SIM:{
                 // Implementation for SIM
@@ -123,6 +153,7 @@ void setup(){
     wall.init();
     sensors.setPID(1.5, 0.0, 0.5);
     camera.begin(115200);
+    drive.init();
 
     leftMotor.setMaxSpeed(4000);
     rightMotor.setMaxSpeed(4000);
@@ -132,7 +163,7 @@ void setup(){
         Motor,
         "Motor",
         4000,
-        &sharedSpeeds,
+        &sharedMotorData,
         3,
         &MotorTaskHandle,
         0
@@ -142,7 +173,7 @@ void setup(){
         Movement,
         "Movement Logic",
         4000,
-        &sharedSpeeds,
+        &sharedMotorData,
         1,
         &LogicTaskHandle,
         1
