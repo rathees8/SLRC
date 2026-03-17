@@ -1,5 +1,7 @@
 #include "StepperDrive.h"
 
+double anglePerStep = 1.8;
+
 StepperDrive::StepperDrive(int spL, int dpL, int spR, int dpR) {
   stepPinL = spL;
   dirPinL = dpL;
@@ -11,70 +13,37 @@ StepperDrive::StepperDrive(int spL, int dpL, int spR, int dpR) {
 }
 
 void StepperDrive::init() {
-  pinMode(stepPinL, OUTPUT);
-  pinMode(dirPinL, OUTPUT);
-  pinMode(stepPinR, OUTPUT);
-  pinMode(dirPinR, OUTPUT);
+  leftMotor = new AccelStepper(1, stepPinL, dirPinL);
+  rightMotor = new AccelStepper(1, stepPinR, dirPinR);
 }
 
 void StepperDrive::setSpeed(int delayUs) {
   stepDelayMicrosec = delayUs;
 }
 
-void StepperDrive::moveForward(long steps) {
-  // Set directions for forward movement
-  // (You may need to flip HIGH/LOW based on your physical wiring)
-  digitalWrite(dirPinL, HIGH); 
-  digitalWrite(dirPinR, HIGH); 
+void StepperDrive::step(int stepsL, int stepsR) {
+    leftMotor->move(stepsL);
+    rightMotor->move(stepsR);
+}
 
-  // Generate pulses to move the motors
-  for(long i = 0; i < steps; i++) {
-    digitalWrite(stepPinL, HIGH);
-    digitalWrite(stepPinR, HIGH);
-    delayMicroseconds(stepDelayMicrosec);
-    
-    digitalWrite(stepPinL, LOW);
-    digitalWrite(stepPinR, LOW);
-    delayMicroseconds(stepDelayMicrosec);
-  }
+void StepperDrive::moveForward(long steps) {
+    step(steps, steps);
 }
 
 void StepperDrive::turnRight(long steps) {
-  // Left motor forward, Right motor backward
-  digitalWrite(dirPinL, HIGH); 
-  digitalWrite(dirPinR, LOW);  
-
-  for(long i = 0; i < steps; i++) {
-    digitalWrite(stepPinL, HIGH);
-    digitalWrite(stepPinR, HIGH);
-    delayMicroseconds(stepDelayMicrosec);
-    
-    digitalWrite(stepPinL, LOW);
-    digitalWrite(stepPinR, LOW);
-    delayMicroseconds(stepDelayMicrosec);
-  }
+    turnAngle(90);
 }
 
 void StepperDrive::turnLeft(long steps) {
-  // Left motor backward, Right motor forward
-  digitalWrite(dirPinL, LOW); 
-  digitalWrite(dirPinR, HIGH);  
-
-  for(long i = 0; i < steps; i++) {
-    digitalWrite(stepPinL, HIGH);
-    digitalWrite(stepPinR, HIGH);
-    delayMicroseconds(stepDelayMicrosec);
-    
-    digitalWrite(stepPinL, LOW);
-    digitalWrite(stepPinR, LOW);
-    delayMicroseconds(stepDelayMicrosec);
-  }
+    turnAngle(-90);
 }
 
 void StepperDrive::stop() {
-
+    leftMotor->stop();
+    rightMotor->stop();
 }
 
 void StepperDrive::turnAngle(double angle){
-  
+    long steps = (long)(angle / anglePerStep);
+    step(steps, -steps); 
 }

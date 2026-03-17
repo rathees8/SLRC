@@ -2,6 +2,7 @@
 #define STEPPERDRIVE_H
 
 #include <Arduino.h>
+#include <AccelStepper.h>
 
 class StepperDrive {
   private:
@@ -15,6 +16,9 @@ class StepperDrive {
 
     // Speed control (lower delay = faster speed)
     int stepDelayMicrosec; 
+
+    AccelStepper* leftMotor;
+    AccelStepper* rightMotor;
 
   public:
     // Constructor
@@ -30,6 +34,7 @@ class StepperDrive {
     void turnLeft(long steps);
     void stop();
     void turnAngle(double angle);
+    void step(int stepsL, int stepsR);
 };
 
 #endif
