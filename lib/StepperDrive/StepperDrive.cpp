@@ -54,6 +54,9 @@ void StepperDrive::step(int stepsL, int stepsR) {
 void StepperDrive::moveForward(long steps) {
     step(steps, steps);
 }
+void StepperDrive::moveBackwards(long steps) {
+    step(-steps, -steps);
+}
 
 void StepperDrive::turnRight() {
     step(stepsFor90Degrees, -stepsFor90Degrees);

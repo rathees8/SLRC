@@ -30,6 +30,7 @@ class StepperDrive {
     // Movement Methods
     void setSpeed(int delayUs);
     void moveForward(long steps);
+    void moveBackwards(long steps);
     void turnRight();
     void turnLeft();
     void stop();
