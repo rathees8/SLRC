@@ -92,7 +92,7 @@ void Motor(void * pvParameters){
                             drive.stop();
                             drive.turnRight();
                             drive.moveForward(stepsToBox);
-                            //picking up the box (servo code would go here) | b;ocking code | else move to core 1 and block core 0 until pickup is done
+                            //picking up the box (servo code would go here) | blocking code | else move to core 1 and block core 0 until pickup is done
                             pickup = false; // Signal that we have reached the box and can move to the next state
                             searchState = RETURN;
                             drive.stop();
@@ -107,11 +107,6 @@ void Motor(void * pvParameters){
                 }
                 break;
         }
-        // leftMotor.setSpeed(data->left);
-        // rightMotor.setSpeed(data->right);
-        
-        // leftMotor.runSpeed();
-        // rightMotor.runSpeed();
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
