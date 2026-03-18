@@ -1,128 +1,69 @@
 #include <Arduino.h>
 #include <AccelStepper.h>
-#include <LineFollower.h>
-#include <Wire.h>
-#include <wallsensor.h>
+#include "LineFollower.h"
+#include "Task3.h"
 
+// ==========================================
+// 1. PIN DEFINITIONS
+// ==========================================
 // Stepper Motor Pins
 #define L_STEP_PIN 25
 #define L_DIR_PIN  26
-#define R_STEP_PIN 14
+#define R_STEP_PIN 14 
 #define R_DIR_PIN  12
 
-#define SDA 21
-#define SCL 22
-#define XSHUT_LEFT  4
-#define XSHUT_FRONT 13
-#define XSHUT_RIGHT 27 
+// HW-511 IR Sensor Pins (s1 to s6)
+#define IR_S1 34 // Far Left
+#define IR_S2 35 // Mid Left
+#define IR_S3 32 // Inner Left
+#define IR_S4 33 // Inner Right
+#define IR_S5 23 // Mid Right
+#define IR_S6 19 // Far Right
 
-LineFollower sensors(34, 35, 32, 33, 23, 19);
+// ==========================================
+// 2. OBJECT INITIALIZATION
+// ==========================================
+// Initialize the core hardware objects
+LineFollower sensors(IR_S1, IR_S2, IR_S3, IR_S4, IR_S5, IR_S6);
 AccelStepper leftMotor(1, L_STEP_PIN, L_DIR_PIN);
 AccelStepper rightMotor(1, R_STEP_PIN, R_DIR_PIN);
-WallSensors wall(XSHUT_LEFT, XSHUT_RIGHT, XSHUT_FRONT);
 
-struct MotorSpeeds {
-    volatile float left;
-    volatile float right;
-};
+// Initialize Task 3, passing pointers (&) to the hardware we just created
+Task3 taskThree(&leftMotor, &rightMotor, &sensors, IR_S1, IR_S2, IR_S3, IR_S4, IR_S5, IR_S6);
 
-MotorSpeeds sharedSpeeds = {0.0, 0.0};
+// ==========================================
+// 3. SETUP FUNCTION
+// ==========================================
+void setup() {
+  Serial.begin(115200);
+  
+  // Initialize standard sensors and PID
+  sensors.init();
+  sensors.setPID(2.5, 0.0, 0.5); 
 
-TaskHandle_t MotorTaskHandle;
-TaskHandle_t LogicTaskHandle;
+  // Initialize Steppers
+  leftMotor.setMaxSpeed(4000);
+  rightMotor.setMaxSpeed(4000);
+  
+  // Acceleration is required for the turn logic to work smoothly
+  leftMotor.setAcceleration(2000);
+  rightMotor.setAcceleration(2000);
 
-// States
-enum STATE{
-  TASK_1,
-  TASK_2,
-  SIM,
-  TASK_3,
-  TASK_4
-};
+  // Keep pulses wide enough for industrial drivers
+  leftMotor.setMinPulseWidth(20); 
+  rightMotor.setMinPulseWidth(20);
 
-volatile STATE currentState = TASK_1;
-
-void Motor(void * pvParameters){
-    MotorSpeeds* speeds = (MotorSpeeds*) pvParameters;
-    for(;;){
-        leftMotor.setSpeed(speeds->left);
-        rightMotor.setSpeed(speeds->right);
-        
-        leftMotor.runSpeed();
-        rightMotor.runSpeed();
-        yield();
-    }
+  // Fix mirrored right motor
+  rightMotor.setPinsInverted(true, false, false); 
+  
+  Serial.println("Task 3 (Left-Hand Rule & Dead Ends) starting in 3 seconds...");
+  delay(3000);
 }
 
-void Movement(void * pvParameters){
-    MotorSpeeds* speeds = (MotorSpeeds*) pvParameters;
-    for(;;){
-        switch(currentState) {
-            case TASK_1:
-                uint8_t readings = wall.getReading();
-                
-                break;
-            case TASK_2:
-                float pidCorrection = sensors.calculatePID();
-                float baseSpeed = 800.0; 
-                float pidMultiplier = 150.0; // How aggressively it turns
-                float leftSpeed  = baseSpeed + (pidCorrection * pidMultiplier); 
-                float rightSpeed = baseSpeed - (pidCorrection * pidMultiplier);
-                leftSpeed = constrain(leftSpeed, -200, 2500);
-                rightSpeed = constrain(rightSpeed, -200, 2500);
-
-                speeds->left = leftSpeed;
-                speeds->right = rightSpeed;
-                break;
-            case SIM:
-                // Implementation for SIM
-                break;
-            case TASK_3:
-                // Implementation for TASK_3
-                break;
-            case TASK_4:
-                // Implementation for TASK_4
-                break;
-        }
-        
-
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
-}
-
-
-void setup(){
-    Serial.begin(115200);
-    sensors.init();
-    Wire.begin(SDA, SCL);
-    wall.init();
-    sensors.setPID(1.5, 0.0, 0.5);
-
-    leftMotor.setMaxSpeed(4000);
-    rightMotor.setMaxSpeed(4000);
-    rightMotor.setPinsInverted(true, false, false); 
-
-    xTaskCreatePinnedToCore(
-        Motor,
-        "Motor",
-        4000,
-        &sharedSpeeds,
-        3,
-        &MotorTaskHandle,
-        0
-    );
-
-    xTaskCreatePinnedToCore(
-        Movement,
-        "Movement Logic",
-        4000,
-        &sharedSpeeds,
-        1,
-        &LogicTaskHandle,
-        1
-    );
-}
-
+// ==========================================
+// 4. MAIN LOOP
+// ==========================================
 void loop() {
-  vTaskDelete(NULL); 
+  // Run the Task 3 logic continuously
+  taskThree.runTask();
 }
