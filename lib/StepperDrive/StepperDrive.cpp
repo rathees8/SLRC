@@ -1,80 +1,86 @@
 #include "StepperDrive.h"
 
+// --- CALIBRATION VARIABLE ---
+// You will need to physically test and tune this number!
+// It is the number of motor steps required to rotate the WHOLE ROBOT exactly 90 degrees.
+long stepsFor90Degrees = 800; 
+
 StepperDrive::StepperDrive(int spL, int dpL, int spR, int dpR) {
   stepPinL = spL;
   dirPinL = dpL;
   stepPinR = spR;
   dirPinR = dpR;
   
-  // Default speed (adjust based on your motor's specs)
-  stepDelayMicrosec = 1000; 
+  stepDelayMicrosec = 1000; // Default fallback
 }
 
 void StepperDrive::init() {
-  pinMode(stepPinL, OUTPUT);
-  pinMode(dirPinL, OUTPUT);
-  pinMode(stepPinR, OUTPUT);
-  pinMode(dirPinR, OUTPUT);
+  leftMotor = new AccelStepper(1, stepPinL, dirPinL);
+  rightMotor = new AccelStepper(1, stepPinR, dirPinR);
+  
+  // You MUST set Max Speed AND Acceleration for the run() function to work!
+  leftMotor->setMaxSpeed(4000);
+  rightMotor->setMaxSpeed(4000);
+  leftMotor->setAcceleration(2000); 
+  rightMotor->setAcceleration(2000);
 }
 
-void StepperDrive::setSpeed(int delayUs) {
-  stepDelayMicrosec = delayUs;
+void StepperDrive::setSpeed(int speed) {
+  stepDelayMicrosec = speed;
+  leftMotor->setMaxSpeed(speed);
+  rightMotor->setMaxSpeed(speed);
+}
+
+
+long StepperDrive::getLeftPosition() {
+    return leftMotor->currentPosition();
+}
+
+void StepperDrive::step(int stepsL, int stepsR) {
+    // 1. Set the target destinations relative to current position
+    leftMotor->move(stepsL);
+    rightMotor->move(stepsR);
+
+    // 2. Trap the code here until BOTH motors reach their targets
+    while (leftMotor->distanceToGo() != 0 || rightMotor->distanceToGo() != 0) {
+        leftMotor->run();
+        rightMotor->run();
+        
+        // Feed the ESP32 Watchdog so it doesn't crash while driving
+        yield(); 
+    }
 }
 
 void StepperDrive::moveForward(long steps) {
-  // Set directions for forward movement
-  // (You may need to flip HIGH/LOW based on your physical wiring)
-  digitalWrite(dirPinL, HIGH); 
-  digitalWrite(dirPinR, HIGH); 
-
-  // Generate pulses to move the motors
-  for(long i = 0; i < steps; i++) {
-    digitalWrite(stepPinL, HIGH);
-    digitalWrite(stepPinR, HIGH);
-    delayMicroseconds(stepDelayMicrosec);
-    
-    digitalWrite(stepPinL, LOW);
-    digitalWrite(stepPinR, LOW);
-    delayMicroseconds(stepDelayMicrosec);
-  }
+    step(steps, steps);
 }
 
-void StepperDrive::turnRight(long steps) {
-  // Left motor forward, Right motor backward
-  digitalWrite(dirPinL, HIGH); 
-  digitalWrite(dirPinR, LOW);  
-
-  for(long i = 0; i < steps; i++) {
-    digitalWrite(stepPinL, HIGH);
-    digitalWrite(stepPinR, HIGH);
-    delayMicroseconds(stepDelayMicrosec);
-    
-    digitalWrite(stepPinL, LOW);
-    digitalWrite(stepPinR, LOW);
-    delayMicroseconds(stepDelayMicrosec);
-  }
+void StepperDrive::turnRight() {
+    step(stepsFor90Degrees, -stepsFor90Degrees);
 }
 
-void StepperDrive::turnLeft(long steps) {
-  // Left motor backward, Right motor forward
-  digitalWrite(dirPinL, LOW); 
-  digitalWrite(dirPinR, HIGH);  
+void StepperDrive::turnLeft() {
+    step(-stepsFor90Degrees, stepsFor90Degrees);
+}
 
-  for(long i = 0; i < steps; i++) {
-    digitalWrite(stepPinL, HIGH);
-    digitalWrite(stepPinR, HIGH);
-    delayMicroseconds(stepDelayMicrosec);
+// --- Used by GridNavigator for continuous PID steering ---
+void StepperDrive::MoveCTS(double speedL, double speedR) {
+    leftMotor->setSpeed(speedL);
+    rightMotor->setSpeed(speedR);
     
-    digitalWrite(stepPinL, LOW);
-    digitalWrite(stepPinR, LOW);
-    delayMicroseconds(stepDelayMicrosec);
-  }
+    // runSpeed() does NOT use acceleration, it instantly applies the speed.
+    // Perfect for real-time PID adjustments!
+    leftMotor->runSpeed();
+    rightMotor->runSpeed();
 }
 
 void StepperDrive::stop() {
-
+    leftMotor->stop();
+    rightMotor->stop();
 }
 
 void StepperDrive::turnAngle(double angle){
-  
+    // Calculate ratio based on our known 90-degree step count
+    long steps = (long)((angle / 90.0) * stepsFor90Degrees);
+    step(steps, -steps); 
 }
