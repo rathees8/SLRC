@@ -1,6 +1,9 @@
 #include "StepperDrive.h"
 
-double anglePerStep = 1.8;
+// --- CALIBRATION VARIABLE ---
+// You will need to physically test and tune this number!
+// It is the number of motor steps required to rotate the WHOLE ROBOT exactly 90 degrees.
+long stepsFor90Degrees = 800; 
 
 StepperDrive::StepperDrive(int spL, int dpL, int spR, int dpR) {
   stepPinL = spL;
@@ -8,43 +11,65 @@ StepperDrive::StepperDrive(int spL, int dpL, int spR, int dpR) {
   stepPinR = spR;
   dirPinR = dpR;
   
-  // Default speed (adjust based on your motor's specs)
-  stepDelayMicrosec = 1000; 
+  stepDelayMicrosec = 1000; // Default fallback
 }
 
 void StepperDrive::init() {
   leftMotor = new AccelStepper(1, stepPinL, dirPinL);
   rightMotor = new AccelStepper(1, stepPinR, dirPinR);
+  
+  // You MUST set Max Speed AND Acceleration for the run() function to work!
   leftMotor->setMaxSpeed(4000);
   rightMotor->setMaxSpeed(4000);
+  leftMotor->setAcceleration(2000); 
+  rightMotor->setAcceleration(2000);
 }
 
-void StepperDrive::setSpeed(int delayUs) {
-  stepDelayMicrosec = delayUs;
+void StepperDrive::setSpeed(int speed) {
+  stepDelayMicrosec = speed;
+  leftMotor->setMaxSpeed(speed);
+  rightMotor->setMaxSpeed(speed);
+}
+
+
+long StepperDrive::getLeftPosition() {
+    return leftMotor->currentPosition();
 }
 
 void StepperDrive::step(int stepsL, int stepsR) {
+    // 1. Set the target destinations relative to current position
     leftMotor->move(stepsL);
     rightMotor->move(stepsR);
-    leftMotor->run();
-    rightMotor->run();
+
+    // 2. Trap the code here until BOTH motors reach their targets
+    while (leftMotor->distanceToGo() != 0 || rightMotor->distanceToGo() != 0) {
+        leftMotor->run();
+        rightMotor->run();
+        
+        // Feed the ESP32 Watchdog so it doesn't crash while driving
+        yield(); 
+    }
 }
 
 void StepperDrive::moveForward(long steps) {
     step(steps, steps);
 }
 
-void StepperDrive::turnRight(long steps) {
-    turnAngle(90);
+void StepperDrive::turnRight() {
+    step(stepsFor90Degrees, -stepsFor90Degrees);
 }
 
-void StepperDrive::turnLeft(long steps) {
-    turnAngle(-90);
+void StepperDrive::turnLeft() {
+    step(-stepsFor90Degrees, stepsFor90Degrees);
 }
 
+// --- Used by GridNavigator for continuous PID steering ---
 void StepperDrive::MoveCTS(double speedL, double speedR) {
     leftMotor->setSpeed(speedL);
     rightMotor->setSpeed(speedR);
+    
+    // runSpeed() does NOT use acceleration, it instantly applies the speed.
+    // Perfect for real-time PID adjustments!
     leftMotor->runSpeed();
     rightMotor->runSpeed();
 }
@@ -55,6 +80,7 @@ void StepperDrive::stop() {
 }
 
 void StepperDrive::turnAngle(double angle){
-    long steps = (long)(angle / anglePerStep);
+    // Calculate ratio based on our known 90-degree step count
+    long steps = (long)((angle / 90.0) * stepsFor90Degrees);
     step(steps, -steps); 
 }

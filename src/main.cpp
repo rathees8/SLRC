@@ -68,7 +68,6 @@ void Motor(void * pvParameters){
     for(;;){
         switch(currentState){
             case TASK_1:
-                drive.MoveCTS(data->speedLeft, data->speedRight);
                 break;
             case TASK_2:
                 switch (searchState){
@@ -83,13 +82,14 @@ void Motor(void * pvParameters){
                         }
                         break;
                 }
+                break;
         }
         // leftMotor.setSpeed(data->left);
         // rightMotor.setSpeed(data->right);
         
         // leftMotor.runSpeed();
         // rightMotor.runSpeed();
-        yield();
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 

@@ -17,27 +17,53 @@ int GridNavigator::getY() { return currentY; }
 int GridNavigator::getHeading() { return heading; }
 
 void GridNavigator::moveForwardOneCell() {
-  // Ideally, in a non-blocking setup, you would loop step-by-step here 
-  // and apply your LineFollower.calculatePID() to adjust motor speeds.
-  // For this basic architecture, we command the steppers to move the set distance.
-  
-  motors->moveForward(stepsPerCell);
+    // 1. Figure out where we are starting and where we need to end
+    long startPos = motors->getLeftPosition();
+    long targetPos = startPos + stepsPerCell;
 
-  // Update coordinates based on the direction we just traveled
-  if (heading == NORTH) {
-    currentY++;
-  } else if (heading == SOUTH) {
-    currentY--;
-  } else if (heading == EAST) {
-    currentX++;
-  } else if (heading == WEST) {
-    currentX--;
-  }
+    // 2. Drive forward while steering until we reach the target!
+    while (motors->getLeftPosition() < targetPos) {
+        
+        // --- YOUR PID LOGIC ---
+        float pidCorrection = sensors->calculatePID();
+        
+        float baseSpeed = 800.0; 
+        float pidMultiplier = 150.0; 
+        
+        float leftSpeed  = baseSpeed + (pidCorrection * pidMultiplier); 
+        float rightSpeed = baseSpeed - (pidCorrection * pidMultiplier);
+        
+        leftSpeed = constrain(leftSpeed, -200, 2500);
+        rightSpeed = constrain(rightSpeed, -200, 2500);
+
+        // Apply the continuous speeds using your existing function
+        motors->MoveCTS(leftSpeed, rightSpeed);
+
+        // Crucial: Feed the RTOS watchdog timer
+        yield(); 
+    }
+
+    // 3. We have arrived at the center of the next block. Stop motors!
+    motors->MoveCTS(0, 0); 
+    
+    // Tiny delay to let the robot physically settle before reading walls
+    delay(100); 
+
+    // 4. Update coordinates based on the direction we just traveled
+    if (heading == NORTH) {
+        currentY++;
+    } else if (heading == SOUTH) {
+        currentY--;
+    } else if (heading == EAST) {
+        currentX++;
+    } else if (heading == WEST) {
+        currentX--;
+    }
 }
 
 void GridNavigator::turnRight() {
   // 800 steps is a placeholder for a 90-degree turn
-  motors->turnRight(800); 
+  motors->turnRight(); 
   
   // Update heading (Clockwise)
   heading++;
@@ -47,7 +73,7 @@ void GridNavigator::turnRight() {
 }
 
 void GridNavigator::turnLeft() {
-  motors->turnLeft(800);
+  motors->turnLeft();
   
   // Update heading (Counter-Clockwise)
   heading--;
@@ -57,7 +83,8 @@ void GridNavigator::turnLeft() {
 }
 
 void GridNavigator::turnAround() {
-  motors->turnRight(1600); // 180 degree turn
+  motors->turnRight();
+  motors->turnRight(); // 180 degree turn
   
   // Update heading
   heading = (heading + 2) % 4;
