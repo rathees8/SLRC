@@ -20,6 +20,8 @@
 #define XSHUT_FRONT 13
 #define XSHUT_RIGHT 27 
 
+// PIN 16,17 for UART communication with Raspberry Pi (PiLink)
+
 // Controllers and Feedback
 LineFollower sensors(34, 35, 32, 33, 23, 19);
 AccelStepper leftMotor(1, L_STEP_PIN, L_DIR_PIN);
