@@ -12,6 +12,8 @@
 #define L_DIR_PIN  26
 #define R_STEP_PIN 14
 #define R_DIR_PIN  12
+// CLK - and CW- to GND
+// CLK + step and CW+ DIR
 
 // TOF Sensor Pins
 #define SDA 21
