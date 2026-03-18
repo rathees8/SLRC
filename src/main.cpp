@@ -5,6 +5,7 @@
 #include "StepperDrive.h"
 #include "wallsensor.h"
 #include "rpicom.h"
+#include "BoxLifter.h"
 
 // ==========================================
 // PIN DEFINITIONS
@@ -20,13 +21,17 @@
 #define XSHUT_FRONT 13
 #define XSHUT_RIGHT 27 
 
-// HW-511 IR Sensor Pins
-#define IR_S1 34 // Far Left
-#define IR_S2 35 // Mid Left
-#define IR_S3 32 // Inner Left
-#define IR_S4 33 // Inner Right
-#define IR_S5 23 // Mid Right
-#define IR_S6 19 // Far Right
+// HW-511 IR Sensors
+#define IR_S1 34 
+#define IR_S2 35 
+#define IR_S3 32 
+#define IR_S4 33 
+#define IR_S5 23 
+#define IR_S6 19 
+
+// Servo Pins (Change these to your actual ESP32 pins!)
+#define ARM_SERVO_PIN 15
+#define GRIP_SERVO_PIN 2
 
 // ==========================================
 // HARDWARE INITIALIZATION
@@ -36,6 +41,7 @@ WallSensors wall(XSHUT_LEFT, XSHUT_RIGHT, XSHUT_FRONT);
 StepperDrive drive(L_STEP_PIN, L_DIR_PIN, R_STEP_PIN, R_DIR_PIN);
 GridNavigator navigator(&drive, &sensors, 0, 0, 0);
 PiLink camera;
+BoxLifter lifter(ARM_SERVO_PIN, GRIP_SERVO_PIN);
 
 // ==========================================
 // GLOBAL VARIABLES & RTOS SETUP
@@ -43,16 +49,9 @@ PiLink camera;
 struct MotorData {
     float speedLeft;
     float speedRight;
-    long stepLeft;
-    long stepRight;
 };
 
-MotorData sharedMotorData = {0.0, 0.0, 0, 0};
-int pixel_gap = 20; 
-int deadzone = 10; 
-int boxesCollected = 0;
-int sweepSide = 1; 
-long stepsToBox = 2000;
+MotorData sharedMotorData = {0.0, 0.0};
 
 TaskHandle_t MotorTaskHandle;
 TaskHandle_t LogicTaskHandle;
@@ -60,19 +59,15 @@ TaskHandle_t LogicTaskHandle;
 enum STATE { TASK_1, TASK_2, SIM, TASK_3, TASK_4 };
 enum SearchState { LINE_FOLLOW, BOX_FOLLOW, RETURN };
 
-// Boot directly into Task 3
+// Boot directly into Task 3 for testing
 volatile STATE currentState = TASK_3; 
 volatile SearchState searchState = LINE_FOLLOW;
-volatile bool boxAligned = false;
-volatile bool onLine = false;
-volatile bool turn = false;
-volatile bool pickup = false;
 
 // --- TASK 3 SPECIFIC VARIABLES ---
-const int LINE_STATE = LOW; // White line = LOW
+const int LINE_STATE = LOW; 
 float t3_baseSpeed = 800.0;
 float t3_pidMultiplier = 150.0;
-volatile bool isExecutingTurn = false; // Prevents Core 0 from interfering during point-turns
+volatile bool isExecutingTurn = false; // Core lockout flag
 
 // ==========================================
 // TASK 3 LOGIC FUNCTIONS
@@ -84,7 +79,7 @@ void performLeftTurn_Task3() {
     drive.turnLeft(); 
     drive.moveForward(400); 
     
-    isExecutingTurn = false; // Hand control back to Core 0
+    isExecutingTurn = false; // Resume Core 0
 }
 
 void perform180Turn_Task3() {
@@ -94,7 +89,10 @@ void perform180Turn_Task3() {
     drive.turnAngle(180.0); 
     drive.moveForward(200); 
     
-    isExecutingTurn = false; // Hand control back to Core 0
+    // Deploy the box exactly at the dead end
+    lifter.deployBoxSequence(); 
+    
+    isExecutingTurn = false; // Resume Core 0
 }
 
 void runTask3Logic(float &outSpeedL, float &outSpeedR) {
@@ -109,14 +107,14 @@ void runTask3Logic(float &outSpeedL, float &outSpeedR) {
     if (s1 != LINE_STATE && s2 != LINE_STATE && s3 != LINE_STATE && 
         s4 != LINE_STATE && s5 != LINE_STATE && s6 != LINE_STATE) {
         
-        outSpeedL = 0; outSpeedR = 0; // Stop motor outputs
+        outSpeedL = 0; outSpeedR = 0; 
         drive.stop();
-        delay(200); 
+        vTaskDelay(pdMS_TO_TICKS(200)); 
         perform180Turn_Task3();
     }
     // 2. Left-Hand Rule Check
     else if (s1 == LINE_STATE && (s3 == LINE_STATE || s4 == LINE_STATE || s6 == LINE_STATE)) {
-        outSpeedL = 0; outSpeedR = 0; // Stop motor outputs
+        outSpeedL = 0; outSpeedR = 0; 
         performLeftTurn_Task3();
     }
     // 3. Normal Line Following
@@ -135,37 +133,30 @@ void Motor(void * pvParameters){
     for(;;){
         switch(currentState){
             case TASK_1: break;
-            case TASK_2:
-                // ... (Task 2 logic remains untouched) ...
-                break;
+            case TASK_2: break; // Kept clean for testing Task 3
             case TASK_3:
-                // Only step the motors if Core 1 isn't currently blocking the thread with a turn
                 if (!isExecutingTurn) {
                     drive.MoveCTS(data->speedLeft, data->speedRight);
                 }
                 break;
             case SIM:
-            case TASK_4:
-                break;
+            case TASK_4: break;
         }
         taskYIELD(); 
     }
 }
 
 // ==========================================
-// CORE 1: SENSOR LOGIC & MOVEMENT TASK
+// CORE 1: SENSOR LOGIC TASK
 // ==========================================
 void Movement(void * pvParameters){
     MotorData* data = (MotorData*) pvParameters;
     for(;;){
         switch(currentState) {
             case TASK_1: break;
-            case TASK_2:
-                // ... (Task 2 logic remains untouched) ...
-                break; 
+            case TASK_2: break;
             case SIM: break;
             case TASK_3: {
-                // Run the flattened Task 3 logic
                 runTask3Logic(data->speedLeft, data->speedRight);
                 break;
             }
@@ -182,18 +173,19 @@ void setup(){
     Serial.begin(115200);
     
     sensors.init();
-    sensors.setPID(2.5, 0.0, 0.5); // Using the snappier tuning
+    sensors.setPID(2.5, 0.0, 0.5); 
     
     Wire.begin(SDA, SCL);
     wall.init();
     camera.begin(115200);
     
     drive.init();
+    lifter.init(); // Initialize the servo hardware
 
     xTaskCreatePinnedToCore(Motor, "Motor", 4000, &sharedMotorData, 3, &MotorTaskHandle, 0);
     xTaskCreatePinnedToCore(Movement, "Movement Logic", 4000, &sharedMotorData, 1, &LogicTaskHandle, 1);
     
-    Serial.println("Task 3 Branch Ready!");
+    Serial.println("Task 3 + Deployment Branch Ready!");
 }
 
 void loop() {
