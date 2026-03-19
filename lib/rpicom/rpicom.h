@@ -2,6 +2,7 @@
 #define RPICOM_H
 
 #include <Arduino.h>
+#include <ESP32Servo.h>
 
 class PiLink {
 private:
@@ -59,5 +60,42 @@ public:
 };
 
 
+class camera {
+private:
+    int servopin;
+    double angle;
+    Servo panServo; // Create a Servo object from the ESP32Servo library
+
+public:
+    // Constructor
+    camera(int SERVOPIN) : servopin(SERVOPIN), angle(90.0) {}
+
+    // Initialize the servo
+    void init() {
+        // Attach the servo to the designated pin
+        panServo.attach(servopin,1000,2000);
+        
+        // Optionally move to the center position on startup
+        centre();
+    }
+    
+    // Move camera to 0 degrees
+    void turnleft() {
+        angle = 0;
+        panServo.write(0); // The library maps 0-180 directly to pulse widths
+    }
+
+    // Move camera to 180 degrees
+    void turnRight() {
+        angle = 180;
+        panServo.write(180); // The library maps 0-180 directly to pulse widths
+    }
+
+    // Move camera to 90 degrees (Center)
+    void centre() {
+        angle = 90;
+        panServo.write(90); // The library maps 0-180 directly to pulse widths
+    }
+};
 
 #endif
