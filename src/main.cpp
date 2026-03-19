@@ -10,22 +10,27 @@
 // Stepper Motor Pins
 #define L_STEP_PIN 25
 #define L_DIR_PIN  26
-#define R_STEP_PIN 14
-#define R_DIR_PIN  12
+#define R_STEP_PIN 18
+#define R_DIR_PIN  19
 // CLK - and CW- to GND
 // CLK + step and CW+ DIR
+
+// servo PIN
+#define SERVO_1_PIN 23 
+#define SERVO_2_PIN 2  
+#define SERVO_3_PIN 4   
 
 // TOF Sensor Pins
 #define SDA 21
 #define SCL 22
-#define XSHUT_LEFT  4
+#define XSHUT_LEFT  14
 #define XSHUT_FRONT 13
 #define XSHUT_RIGHT 27 
 
 // PIN 16,17 for UART communication with Raspberry Pi (PiLink)
 
-// Controllers and Feedback
-LineFollower sensors(34, 35, 32, 33, 23, 19);
+// Controllers and Feedback=
+LineFollower sensors(34, 35, 32, 33, 39, 36);
 AccelStepper leftMotor(1, L_STEP_PIN, L_DIR_PIN);
 AccelStepper rightMotor(1, R_STEP_PIN, R_DIR_PIN);
 WallSensors wall(XSHUT_LEFT, XSHUT_RIGHT, XSHUT_FRONT);
