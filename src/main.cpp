@@ -88,15 +88,24 @@ void Motor(void * pvParameters){
             case TASK_1:
                 break;
             case TASK_2:
-                if (xSemaphoreTake(motorDataMutex, pdMS_TO_TICKS(1)) == pdTRUE) {
-                    localSpeedL = data->speedLeft;
-                    localSpeedR = data->speedRight;
-                    xSemaphoreGive(motorDataMutex); // UNLOCK immediately after reading
-                }
+                switch(searchState){
+                    case LINE_FOLLOW:
+                        if (turn){
+                            drive.turnRight(); 
+                            drive.turnRight(); 
+                            turn = false;
+                        }
+                        if (xSemaphoreTake(motorDataMutex, pdMS_TO_TICKS(1)) == pdTRUE) {
+                            localSpeedL = data->speedLeft;
+                            localSpeedR = data->speedRight;
+                            xSemaphoreGive(motorDataMutex); // UNLOCK immediately after reading
+                        }
 
-                // Apply the safely copied speeds
-                drive.MoveCTS(localSpeedL, localSpeedR);
-                break;
+                        // Apply the safely copied speeds
+                        drive.MoveCTS(localSpeedL, localSpeedR);
+                        break;
+                }
+                
         }
         vTaskDelay(pdMS_TO_TICKS(1));
     }
