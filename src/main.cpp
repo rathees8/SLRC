@@ -104,6 +104,25 @@ void Motor(void * pvParameters){
                         // Apply the safely copied speeds
                         drive.MoveCTS(localSpeedL, localSpeedR);
                         break;
+                    case BOX_FOLLOW:
+                        if (!boxAligned){
+                            drive.MoveCTS(data->speedLeft, data->speedRight);
+                        }else{
+                            drive.stop();
+                            drive.turnRight();
+                            drive.moveForward(stepsToBox);
+                            //picking up the box (servo code would go here) | blocking code | else move to core 1 and block core 0 until pickup is done
+                            pickup = false; // Signal that we have reached the box and can move to the next state
+                            searchState = RETURN;
+                            drive.stop();
+                        }
+                        break;
+                    case RETURN:
+                        // Implement return logic here (e.g., navigate back to start)
+                        drive.moveBackwards(stepsToBox); // Move back from the box
+                        drive.turnLeft();
+                        onLine = true;
+                        break;
                 }
                 
         }
