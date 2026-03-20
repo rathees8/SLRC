@@ -47,6 +47,7 @@ struct MotorData {
 
 // Global variables
 MotorData sharedMotorData = {0.0, 0.0, 0, 0};
+SemaphoreHandle_t motorDataMutex;
 int pixel_gap = 20; // for perfect rotation, adjust it until 90 turn becomes straight to cube.
 int deadzone = 10; // pixels within the center that are considered "close enough"
 int boxesCollected = 0;
@@ -80,15 +81,24 @@ volatile bool pickup = false;
 
 void Motor(void * pvParameters){
     MotorData* data = (MotorData*) pvParameters;
+    float localSpeedL = 0;
+    float localSpeedR = 0;
     for(;;){
         switch(currentState){
             case TASK_1:
                 break;
             case TASK_2:
-                drive.MoveCTS(data->speedLeft, data->speedRight);
+                if (xSemaphoreTake(motorDataMutex, pdMS_TO_TICKS(1)) == pdTRUE) {
+                    localSpeedL = data->speedLeft;
+                    localSpeedR = data->speedRight;
+                    xSemaphoreGive(motorDataMutex); // UNLOCK immediately after reading
+                }
+
+                // Apply the safely copied speeds
+                drive.MoveCTS(localSpeedL, localSpeedR);
                 break;
         }
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
 
@@ -102,9 +112,14 @@ void Movement(void * pvParameters){
             case TASK_2: {
                 float pidCorrection = sensors.calculatePID();
                 float baseSpeed = 800.0; 
-                float pidMultiplier = 100.0; 
-                data->speedLeft  = constrain(baseSpeed + (pidCorrection * pidMultiplier), -200, 2500);
-                data->speedRight = constrain(baseSpeed - (pidCorrection * pidMultiplier), -200, 2500);
+                float pidMultiplier = 150.0; 
+                if (xSemaphoreTake(motorDataMutex, pdMS_TO_TICKS(1)) == pdTRUE) {
+                    data->speedLeft  = constrain(baseSpeed + (pidCorrection * pidMultiplier), -20, 250);
+                    data->speedRight = constrain(baseSpeed - (pidCorrection * pidMultiplier), -20, 250);
+                    
+                    // UNLOCK the data when done
+                    xSemaphoreGive(motorDataMutex);
+                }
                 break;
             }
             case SIM:{
@@ -122,7 +137,7 @@ void Movement(void * pvParameters){
         }
         
 
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
 
@@ -135,9 +150,10 @@ void setup(){
     sensors.setPID(1.5, 0.0, 0.5);
     camera.begin(115200);
     drive.init();
+    motorDataMutex = xSemaphoreCreateMutex();
 
-    leftMotor.setMaxSpeed(4000);
-    rightMotor.setMaxSpeed(4000);
+    leftMotor.setMaxSpeed(400);
+    rightMotor.setMaxSpeed(400);
 
     xTaskCreatePinnedToCore(
         Motor,
