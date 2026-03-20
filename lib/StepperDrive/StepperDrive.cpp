@@ -19,6 +19,7 @@ void StepperDrive::init() {
   rightMotor = new AccelStepper(1, stepPinR, dirPinR);
   
   // You MUST set Max Speed AND Acceleration for the run() function to work!
+  leftMotor->setPinsInverted(true, false, false); 
   leftMotor->setMaxSpeed(4000);
   rightMotor->setMaxSpeed(4000);
   leftMotor->setAcceleration(2000); 
