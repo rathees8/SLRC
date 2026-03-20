@@ -20,15 +20,16 @@ public:
 
     // Call this in setup()
     void begin(long baudRate = 115200) {
-        Serial.begin(baudRate);
-        Serial.println("PiLink: UART Initialized. Waiting for coordinates...");
+        // FIXED: Initialize Serial2 on RX=16, TX=17
+        Serial2.begin(baudRate, SERIAL_8N1, 16, 17);
+        Serial.println("PiLink: UART2 Initialized on pins 16 & 17. Waiting for coordinates...");
     }
 
-    // Call this continuously in loop()
+    // Call this continuously in loop() or RTOS task
     void update() {
-        // Only read if there is a complete line waiting in the buffer
-        if (Serial.available() > 0) {
-            String incomingData = Serial.readStringUntil('\n');
+        // FIXED: Now checking Serial2 (Pins 16/17) instead of USB
+        if (Serial2.available() > 0) {
+            String incomingData = Serial2.readStringUntil('\n');
             int commaIndex = incomingData.indexOf(',');
             
             // Validate that we actually found a comma
