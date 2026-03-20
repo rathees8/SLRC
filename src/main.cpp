@@ -110,18 +110,59 @@ void Movement(void * pvParameters){
                 break;
             }
             case TASK_2: {
-                float pidCorrection = sensors.calculatePID();
-                Serial.print(pidCorrection);
-                float baseSpeed = 40.0; 
-                float pidMultiplier = 10.0; 
-                if (xSemaphoreTake(motorDataMutex, pdMS_TO_TICKS(1)) == pdTRUE) {
-                    data->speedLeft  = constrain(baseSpeed + (pidCorrection * pidMultiplier), 0, 500);
-                    data->speedRight = constrain(baseSpeed - (pidCorrection * pidMultiplier), 0, 500);
-                    
-                    // UNLOCK the data when done
-                    xSemaphoreGive(motorDataMutex);
+                switch(searchState){
+                    case LINE_FOLLOW:{
+                        if (camera.hasNewData()) {
+                            // We found it! Lock into Box Follow mode so we don't switch back.
+                            searchState = BOX_FOLLOW;
+                            data->speedLeft = 0;
+                            data->speedRight = 0; // Tap the brakes
+                        } else {
+                            float pidCorrection = sensors.calculatePID();
+                            Serial.print(pidCorrection);
+                            float baseSpeed = 40.0; 
+                            float pidMultiplier = 10.0; 
+                            if (xSemaphoreTake(motorDataMutex, pdMS_TO_TICKS(1)) == pdTRUE) {
+                                data->speedLeft  = constrain(baseSpeed + (pidCorrection * pidMultiplier), 0, 500);
+                                data->speedRight = constrain(baseSpeed - (pidCorrection * pidMultiplier), 0, 500);                                
+                                // UNLOCK the data when done
+                                xSemaphoreGive(motorDataMutex);
+                            }
+                        }
+                        break;
+                    }
+                    case BOX_FOLLOW: {
+                        // We are locked onto the box. 
+                        if (camera.hasNewData()) {
+                            int targetX = 320; // Assuming 640px wide camera
+                            int currentX = camera.getX();
+                            int error = currentX - targetX;
+                            // Are we perfectly aligned?
+                            if (abs(error) <= deadzone) {
+                                data->speedLeft = 0;
+                                data->speedRight = 0;
+                                boxAligned = true;
+                                pickup = true;
+                                while(pickup){
+                                    // Wait here until the box is picked up before moving to the next state
+                                    vTaskDelay(pdMS_TO_TICKS(100));
+                                }
+                                    
+                                searchState = RETURN; // Move to next phase
+                                
+                            } else {
+                                data->speedLeft = (error > 0) ? 50 : -50; // Simple proportional control
+                                data->speedRight = (error > 0) ? 50 : -50;
+                            }
+                        } else {
+                            // Camera blinked or lost the box!
+                            // DO NOT go back to line follow. Just stop and wait for the camera to catch up.
+                            data->speedLeft = 0;
+                            data->speedRight = 0;
+                        }
+                        break;
+                    }
                 }
-                break;
             }
             case SIM:{
                 // Implementation for SIM
