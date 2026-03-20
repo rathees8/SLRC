@@ -111,11 +111,12 @@ void Movement(void * pvParameters){
             }
             case TASK_2: {
                 float pidCorrection = sensors.calculatePID();
-                float baseSpeed = 800.0; 
-                float pidMultiplier = 150.0; 
+                Serial.print(pidCorrection);
+                float baseSpeed = 40.0; 
+                float pidMultiplier = 10.0; 
                 if (xSemaphoreTake(motorDataMutex, pdMS_TO_TICKS(1)) == pdTRUE) {
-                    data->speedLeft  = constrain(baseSpeed + (pidCorrection * pidMultiplier), -20, 250);
-                    data->speedRight = constrain(baseSpeed - (pidCorrection * pidMultiplier), -20, 250);
+                    data->speedLeft  = constrain(baseSpeed + (pidCorrection * pidMultiplier), 0, 500);
+                    data->speedRight = constrain(baseSpeed - (pidCorrection * pidMultiplier), 0, 500);
                     
                     // UNLOCK the data when done
                     xSemaphoreGive(motorDataMutex);
@@ -147,7 +148,7 @@ void setup(){
     sensors.init();
     Wire.begin(SDA, SCL);
     wall.init();
-    sensors.setPID(1.5, 0.0, 0.5);
+    sensors.setPID(1.5, 0.0, 0);
     camera.begin(115200);
     drive.init();
     motorDataMutex = xSemaphoreCreateMutex();

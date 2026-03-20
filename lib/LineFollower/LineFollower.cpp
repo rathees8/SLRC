@@ -49,13 +49,17 @@ int LineFollower::getError() {
   }
 
   // 2. Determine error based on which sensors are over the white line
-  if (s1 == LINE_STATE) return -3; // Line is far left
-  if (s2 == LINE_STATE) return -2; // Line is mid left
-  if (s3 == LINE_STATE && s4 == LINE_STATE) return 0; // Perfectly centered (straddling)!
-  if (s3 == LINE_STATE) return -1; // Line is slightly left
-  if (s4 == LINE_STATE) return 1;  // Line is slightly right
-  if (s5 == LINE_STATE) return 2;  // Line is mid right
-  if (s6 == LINE_STATE) return 3;  // Line is far right
+  // if (s1 == LINE_STATE) return -3; // Line is far left
+  // if (s2 == LINE_STATE) return -2; // Line is mid left
+  // if (s3 == LINE_STATE && s4 == LINE_STATE) return 0; // Perfectly centered (straddling)!
+  // if (s3 == LINE_STATE) return -1; // Line is slightly left
+  // if (s4 == LINE_STATE) return 1;  // Line is slightly right
+  // if (s5 == LINE_STATE) return 2;  // Line is mid right
+  // if (s6 == LINE_STATE) return 3;  // Line is far right
+
+  int error = s1 * -3 + s2 * -2 + s3 * -1 + s4 * 1 + s5 * 2 + s6 * 3;
+  return -error;
+
   
   // 3. If the line is totally lost, keep turning in the last known direction
   return previousError; 
