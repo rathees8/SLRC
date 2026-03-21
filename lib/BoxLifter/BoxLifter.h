@@ -8,29 +8,36 @@ class BoxLifter {
   private:
     Servo armServo;
     Servo gripperServo;
+    Servo latchServo; 
+    Servo pusherServo; 
     
-    int armPin;
-    int gripperPin;
+    int armPin, gripperPin, latchPin, pusherPin;
 
     // --- CALIBRATION ANGLES ---
-    // You must physically tune these so the arm aligns perfectly with your top storage deck!
-    int armUpAngle = 90;       // Top storage position
-    int armDownAngle = 10;     // Floor deployment position
-    int gripperOpenAngle = 90; // Released
-    int gripperCloseAngle = 10;// Grabbed
+    // You will tune these numbers during your bench test!
+    int armDownAngle = 10;      
+    int armUpAngle = 120;       
 
-    // Internal helpers
+    int gripperOpen = 90;       
+    int gripperClose = 10;      
+
+    int latchHold = 90;         
+    int latchRelease = 0;       
+
+    int pusherRetracted = 0;    
+    int pusherHalfPush = 45;    
+    int pusherFullPush = 90;    
+
+    int boxCount = 0;           // State memory
+
     void smoothSweep(Servo &servo, int startAngle, int endAngle, int speedDelayMs);
-    void armUp();
-    void armDown();
-    void openGripper();
-    void closeGripper();
 
   public:
-    BoxLifter(int aPin, int gPin);
+    BoxLifter(int aPin, int gPin, int lPin, int pPin);
     
     void init();
-    void deployBoxSequence(); 
+    void collectAndStoreBox(); 
+    void deployAndShiftQueue();
 };
 
 #endif
